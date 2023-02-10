@@ -9,7 +9,7 @@
 #include <TinyGPS++.h> // import de la librairie TinyGPS++ qui permet d'extraire des données de position,date,time,altitude,speed and consumer form GPS devices
 #include <SoftwareSerial.h> // import de la librairie qui permet d'avoir un port série virtuel car le port série matériel 0 et 1 est déjà utilisé quand on branche l'USB
 
-const int RXPin = 3, TXPin = 4;   // Pour définir les constantes RxPin et Txpin au niveau des pin 3 et 4 
+const int RXPin = 4, TXPin = 3;   // Pour définir les constantes RxPin et Txpin au niveau des pin 3 et 4 
 const uint32_t GPSBaud = 4800; //Default baud of NEO-6M is 9600 // Le Baudrate de notre GPS est de 4800
 
 
