@@ -1,0 +1,77 @@
+/*
+ * Created by ArduinoGetStarted.com
+ *
+ * This example code is in the public domain
+ *
+ * Tutorial page: https://arduinogetstarted.com/tutorials/arduino-gps
+ */
+
+#include <TinyGPS++.h> // import de la librairie TinyGPS++ qui permet d'extraire des données de position,date,time,altitude,speed and consumer form GPS devices
+#include <SoftwareSerial.h> // import de la librairie qui permet d'avoir un port série virtuel car le port série matériel 0 et 1 est déjà utilisé quand on branche l'USB
+
+const int RXPin = 3, TXPin = 4;   // Pour définir les constantes RxPin et Txpin au niveau des pin 3 et 4 
+const uint32_t GPSBaud = 4800; //Default baud of NEO-6M is 9600 // Le Baudrate de notre GPS est de 4800
+
+
+TinyGPSPlus gps; // the TinyGPS++ object // on crée un objet avec les fonctions de TinyGPSPlus
+SoftwareSerial gpsSerial(RXPin, TXPin); // the serial interface to the GPS device // on crée un objet avec les fonctions de SoftwareSerial -> permet d'avoir la broche 3 et 4 comme Rxpin et Txpin
+
+void setup() {
+  Serial.begin(9600); // Set the baud rate for the SoftwareSerial object. Sets the speed (baud rate) for the serial communication.
+  gpsSerial.begin(GPSBaud); // mtn on met que notre ojet a lui un baudrate = 4800 = GPSBaud
+
+  Serial.println(F("Arduino - GPS module")); // affichage de Arduino - GPS module dans le monitueur // println quand affichage + retour à la ligne
+}
+
+void loop() {
+  if (gpsSerial.available() > 0) {      // available() = Get the number of bytes (characters) available for reading from a software serial port. This is data that has already arrived and stored in the serial receive buffer.
+    if (gps.encode(gpsSerial.read())) {   // Each byte of NEMA data must be giving to TinyGPS by using encode(). True is returned when new data has been fully decoded and can be used.
+      if (gps.location.isValid()) {   // isValid() pour vérifier que la data est valide et pas incensée 
+                                     // Dans location on retrouve latitude et longitude 
+        Serial.print(F("- latitude: "));
+        Serial.println(gps.location.lat());
+
+        Serial.print(F("- longitude: "));  //print(F()) signifie que le string n'utilise pas de RAM. Si vous utilisez F(), vous pouvez déplacer les string constant vers la mémoire programme au lieu de la RAM. Cela prendra de l'espace et diminuera la quantité d'autre code que vous pouvez écrire. Mais cela libérera de la RAM dynamique.
+        Serial.println(gps.location.lng());
+
+        Serial.print(F("- altitude: "));
+        if (gps.altitude.isValid())
+          Serial.println(gps.altitude.meters());
+        else
+          Serial.println(F("INVALID"));
+      } else {
+        Serial.println(F("- location: INVALID"));
+      }
+
+      Serial.print(F("- speed: "));
+      if (gps.speed.isValid()) {
+        Serial.print(gps.speed.kmph());
+        Serial.println(F(" km/h"));
+      } else {
+        Serial.println(F("INVALID"));
+      }
+
+      Serial.print(F("- GPS date&time: "));
+      if (gps.date.isValid() && gps.time.isValid()) {
+        Serial.print(gps.date.year());
+        Serial.print(F("-"));
+        Serial.print(gps.date.month());
+        Serial.print(F("-"));
+        Serial.print(gps.date.day());
+        Serial.print(F(" "));
+        Serial.print(gps.time.hour());
+        Serial.print(F(":"));
+        Serial.print(gps.time.minute());
+        Serial.print(F(":"));
+        Serial.println(gps.time.second());
+      } else {
+        Serial.println(F("INVALID"));
+      }
+
+      Serial.println();   // Un retour à la ligne 
+    }
+  }
+
+  if (millis() > 5000 && gps.charsProcessed() < 10) // if (the sketch has been running for at least five seconds AND we have received fewer than ten characters from the GPS) display "No GPS data received: check wiring". It's warning displayed if the GPS is not producing data.
+    Serial.println(F("No GPS data received: check wiring"));
+}
