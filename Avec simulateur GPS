@@ -14,8 +14,8 @@ float lastSpeed = 0.0;  // dernière vitesse
 float interval = 1000; // ms 
 
 void setup() {
-  Serial.begin(9600);
-  gpsSerial.begin(GPSBaud);
+  Serial.begin(9600); // port serial de communication avec le pc
+  gpsSerial.begin(GPSBaud); // port serial de communication avec le capteur GPS
   pinMode(3, INPUT); // PPS pin (2 ou 3 sur Arduino pour interruption)
   attachInterrupt(digitalPinToInterrupt(3), ppsISR, RISING); // fonction d'interruption qui va nous permettre de dire que l'interruption a eu lieu, 
                                                              // donc que le PPS Pin est actif et qu'on peut lire les données 
