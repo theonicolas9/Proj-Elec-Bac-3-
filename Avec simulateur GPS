@@ -106,7 +106,7 @@ void loop() {
 
     /* check if we have new GPS data
     if (gps.speed.knots() != TinyGPSPlus::GPS_INVALID_F_SPEED) {
-      float speed = gps.speed.knots();
+      float speed = gps.speed.knots();  // on peut aussi définir un int speed en haut -> int c'est mieux pcq gps affiche que des entiers 
       // adjust print interval based on speed
       if (speed < lastSpeed) {
         printInterval += 1000;
