@@ -11,6 +11,7 @@ LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C address 0x27, 16 column and 2 rows
 
 float lastTime=0; 
 float interval=1000; 
+float intervalsec=0;
 float speed_last=0.0; 
 
 float latitude = 0.0;
@@ -65,17 +66,18 @@ void loop() {
     switch( val ) {
       case 0 ... 29:
       interval = 10000; // Intervalle de 10 secondes pour les vitesses <= 30 km/h
+      intervalsec= interval/1000;
      // limit=30;
         break;
       case 30 ... 49:
       interval = 5000; // Intervalle de 10 secondes pour les vitesses <= 50 km/h
+      intervalsec= interval/1000;
     //  limit=50;
        
         break;
       default:
       interval = 2000; // Intervalle de 2secondes pour les vitesses > 50 km/h
-   
-           
+      intervalsec= interval/1000;    
         break;
     }  
   }    
@@ -84,17 +86,7 @@ void loop() {
   if (( time_curr - lastTime) >= interval) {    
         lastTime = time_curr;
              
-      if ( speed_curr ) {
-            Serial.print(F("- speed_curr : "));  
-            Serial.println( speed_curr );
-//            Serial.print("$$$$$$$$$$$ Vitesse inférieure ou égale à ");
-//            Serial.print(limit);
-//            Serial.print(" interval de ");
-            Serial.print("$$$$$$$$$$$ interval ");
-            Serial.print(interval);
-            Serial.println("secondes"); 
   
-      }   
       if ( latitude ) {
             Serial.print(F("- latitude : ")); 
             Serial.println( latitude );
@@ -115,6 +107,17 @@ void loop() {
             Serial.print(F("- date_day : ")); 
             Serial.println( date_day );
       }
+      
+      if ( speed_curr ) {
+            Serial.print(F("- speed_curr : "));  
+            Serial.println( speed_curr );
+//            Serial.print("$$$$$$$$$$$ Vitesse inférieure ou égale à ");
+//            Serial.print(limit);
+//            Serial.print(" interval de ");
+            Serial.print("$$$$$$$$$$$ interval ");
+            Serial.print(intervalsec);
+            Serial.println(" secondes"); 
+      }  
    }
 //   lcd.setCursor(0, 0); 
 //   lcd.print("affichage  :  ");
