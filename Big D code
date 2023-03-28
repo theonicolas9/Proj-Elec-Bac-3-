@@ -1,208 +1,176 @@
-#include <SPI.h>
-#include <SD.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include <SoftwareSerial.h>
 #include <TinyGPS++.h>
-float downforce;
-float dragforce;
-float flc;
-float FLCvolts;
-float rlc;
-float RLCvolts;
-float mlc;
-float MLCvolts;
-long lastTime = 0;
-long seconds = 0;
-long minutes = 0;
-long hours = 0;
-int pinCS = 10;
-// Create an LCD object. (Parameters)
-LiquidCrystal_I2C lcd(0x27, 2, 1, 0, 4, 5, 6, 7, 3, POSITIVE); // Sets the LCD I2C address
-const float referenceVolts = 5;
-const int FrontLoadCell = A3; 
-const int MidLoadCell = A1;   
-const int RearLoadCell = A2;   
-#define ARDUINO_USD_CS 10
-#define LOG_FILE_PREFIX "gpslog"
-#define MAX_LOG_FILES 100
-#define LOG_FILE_SUFFIX "csv"
-char logFileName[13];
-#define LOG_COLUMN_COUNT 5
-char * log_col_names[LOG_COLUMN_COUNT] = {
-  "longitude", "latitude", "speed", "date", "time"
-}; // log_col_names is printed at the top of the file.
-// Log Rate Control //
-#define LOG_RATE 1000 // Log every 1 seconds
-unsigned long lastLog = 0; // Global var to keep of last time we logged
-TinyGPSPlus tinyGPS;
-#define GPS_BAUD 9600
 #include <SoftwareSerial.h>
-#define ARDUINO_GPS_RX 9
-#define ARDUINO_GPS_TX 8
-SoftwareSerial ssGPS(ARDUINO_GPS_TX, ARDUINO_GPS_RX); // Create a SoftwareSerial
-#define gpsPort ssGPS  // Alternatively, use Serial1 on the Leonardo
-#define SerialMonitor Serial
+#include <SD.h>
+
+const int chipSelect = 10;
+
+static const int RXPin = 4, TXPin = 5;
+static const uint32_t GPSBaud = 4800;
+
+File dataFile;
+char filename[] = "LOGGER00.CSV";
+
+// The TinyGPS++ object
+TinyGPSPlus gps;
+
+// The serial connection to the GPS device
+SoftwareSerial ss(RXPin, TXPin);
+
+// For stats that happen every 5 seconds
+//unsigned long last = 0UL;
+
+unsigned long interval=5000;  // the time we need to wait
+unsigned long previousMillis=0; // millis() returns an unsigned long.
+
 void setup()
 {
-  lcd.begin(20, 4);
-lcd.setCursor(0,0);
-lcd.print("Downforce =");
-lcd.setCursor(0,1);
-lcd.print("Dragforce =");
-lcd.setCursor(0,2);
-lcd.print("Speed     =");
-lcd.setCursor(0,3);
-lcd.print("Time=");
-  SerialMonitor.begin(9600);
-  gpsPort.begin(GPS_BAUD);
-  SerialMonitor.println("Setting up SD card.");
-  if (!SD.begin(ARDUINO_USD_CS))
-  {
-    SerialMonitor.println("Error initializing SD card.");
+  Serial.begin(115200);
+  ss.begin(GPSBaud);
+
+  Serial.print(F("Initializing SD card. "));
+  // make sure that the default chip select pin is set to
+  // output, even if you don't use it:
+  pinMode(10, OUTPUT);
+  
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println(F("Card failed."));
+    // don't do anything more:
+    return;
   }
-  updateFileName();
-  printHeader();
+  Serial.println(F("Card initialized."));
+  
+// create a new file with a new filenumber
+for (uint8_t i = 0; i < 100; i++) {
+    filename[6] = i/10 + '0';
+    filename[7] = i%10 + '0';
+      if (! SD.exists(filename)) {
+      // only open a new file if it doesn't exist
+      dataFile = SD.open(filename, FILE_WRITE);
+      break; // leave the loop
+      }
+      dataFile.close();
+  }
+if (! dataFile) {
+  Serial.println("couldnt create file");
+  }
+  Serial.print("Logging to: ");
+  Serial.println(filename);
+  Serial.println("");  
+  
+    //_________________________Write Log File Header__________________________________________________
+File dataFile = SD.open(filename, FILE_WRITE); 
+  if (dataFile)
+  {                                 
+    dataFile.print(F("Latitude"));          
+    dataFile.print(",");
+    dataFile.print(F("Longitude"));
+    dataFile.print(",");
+    dataFile.print(F("Altitude [MuM]"));
+    dataFile.print(",");
+    dataFile.print(F("Speed [km/h]"));
+    dataFile.print(",");
+    dataFile.print(F("Date"));
+    dataFile.print(",");
+    dataFile.print(F("Time"));
+    dataFile.print(",");
+    dataFile.println(F("Destination dist. [km]"));
+    dataFile.close();
+  }
+    Serial.print(F("Latitude"));          
+    Serial.print(",");
+    Serial.print(F("Longitude"));
+    Serial.print(",");
+    Serial.print(F("Altitude"));
+    Serial.print(",");
+    Serial.print(F("Speed"));
+    Serial.print(",");
+    Serial.print(F("Date"));
+    Serial.print(",");
+    Serial.print(F("Time"));
+    Serial.print(",");
+    Serial.println(F("Zielentfernung"));
 }
+
 void loop()
 {
-  if ((lastLog + LOG_RATE) <= millis())
-
-  { // If it's been LOG_RATE milliseconds since the last log:
-
-    if (tinyGPS.location.isUpdated()) // If the GPS data is vaild
-
-    {
-
-      if (logGPSData()) // Log the GPS data
-
-      {
-
-        SerialMonitor.println("GPS logged."); // Print a debug message
-
-        lastLog = millis(); // Update the lastLog variable
-
-      }
-
-      else // If we failed to log GPS
-
-      { // Print an error, don't update lastLog
-
-        SerialMonitor.println("Failed to log new GPS data.");
-
-      }
-
-    }
-
-    else // If GPS data isn't valid
-
-    {
-
-      // Print a debug message. Maybe we don't have enough satellites yet.
-
-      SerialMonitor.print("No GPS data. Sats: ");
-
-      SerialMonitor.println(tinyGPS.satellites.value());
-
-    }
-
-  }
-
- 
-
-  // If we're not logging, continue to "feed" the tinyGPS object:
-
-  while (gpsPort.available())
-
-    tinyGPS.encode(gpsPort.read());
-
-   if(millis()-lastTime > 1000)
+  // Dispatch incoming characters
+  while (ss.available() > 0)
+    gps.encode(ss.read());
+    
+if ((unsigned long)(millis() - previousMillis) >= interval) { //Logintervall
+    previousMillis = millis();
+    
+if (gps.location.isUpdated())
   {
-    seconds++;
-    lastTime = millis();
-  }
-    if(seconds > 60){
-    minutes++;
-    seconds = 0;
-    }
-    if(minutes > 60){
-    hours++;
-    minutes = 0;
-  }
-  // wait a few seconds between measurements.
 
-flc = analogRead(FrontLoadCell); // reads the value from the sensor
-FLCvolts = ((flc / 1023.0) * referenceVolts)*26.082; // calculates the ratio
- 
-rlc = analogRead(RearLoadCell); // reads the value from the sensor
-RLCvolts = ((rlc / 1023.0) * referenceVolts)*34.014; // calculates the ratio
- 
-mlc = analogRead(MidLoadCell); // reads the value from the sensor
-MLCvolts = ((mlc / 1023.0) * referenceVolts)*17; // calculates the ratio
 
-downforce = FLCvolts + RLCvolts;
-dragforce = MLCvolts;
+    File dataFile = SD.open(filename, FILE_WRITE);
+    dataFile.print(gps.location.lat(), 6);                //print location data
+    dataFile.print(F(","));
+    dataFile.print(gps.location.lng(), 6);
+    dataFile.print(F(","));
 
-}
+    dataFile.print(gps.altitude.meters());                //print altitude
+    dataFile.print(F(","));
 
-byte logGPSData()
-{
+    dataFile.print(gps.speed.kmph());                    //print speed
+    dataFile.print(F(","));
 
-  File logFile = SD.open(logFileName, FILE_WRITE); // Open the log file
-  if (logFile)
-  { // Print longitude, latitude, altitude (in feet), speed (in kmph), course
-    // in (degrees), date, time, and number of satellites.
-   
-    logFile.print(downforce);
-    logFile.print(',');
-    logFile.print(dragforce);
-    logFile.print(',');
-    logFile.print(tinyGPS.speed.kmph(), 1);
-    logFile.print(',');
-    logFile.print(tinyGPS.date.value());
-    logFile.print(',');
-    logFile.print(tinyGPS.time.value());
-    logFile.println();
-    logFile.close();
-    return 1;
-  }
-  return 0;
-}
-void printHeader()
-{
-  File logFile = SD.open(logFileName, FILE_WRITE);
-  if (logFile)
-  {
-    int i = 0;
-    for (; i < LOG_COLUMN_COUNT; i++)
+    if (gps.date.day()<10){  // Print date. Add a leading zero, if necessary.
+     dataFile.print(0);
+     }
+    dataFile.print(gps.date.day());
+    dataFile.print(F("."));
+    
+    if (gps.date.month()<10){  // Add a zero, if necessary, as above
+     dataFile.print(0);
+     }
+    dataFile.print(gps.date.month());
+    dataFile.print(F("."));
+    
+    dataFile.print(gps.date.year());
+    dataFile.print(F(","));
+
+    if (gps.time.hour()<10){            //Print GMT time. Add a zero, if necessary, as above
+     dataFile.print(0);
+     }
+    dataFile.print(gps.time.hour());
+    dataFile.print(F(":"));
+    
+    if (gps.time.minute()<10){  // Add a zero, if necessary, as above
+     dataFile.print(0);
+     }
+    dataFile.print(gps.time.minute());
+    dataFile.print(F(":"));
+    
+    if (gps.time.second()<10){  // Add a zero, if necessary, as above
+     dataFile.print(0);
+     }
+    dataFile.print(gps.time.second());
+    dataFile.print(F(","));
+
+
+    if (gps.location.isValid())
     {
-      logFile.print(log_col_names[i]);
-      if (i < LOG_COLUMN_COUNT - 1)
-       logFile.print(',');
-      else
-        logFile.println(); // print a new line
-    }
-    logFile.close(); // close the file
-  }
-}
+      static const double LONDON_LAT = 51.508131, LONDON_LON = -0.128002;     //custom location
+      double distanceToLondon =
+        TinyGPSPlus::distanceBetween(
+          gps.location.lat(),
+          gps.location.lng(),
+          LONDON_LAT, 
+          LONDON_LON);
+      double courseToLondon =
+        TinyGPSPlus::courseTo(
+          gps.location.lat(),
+          gps.location.lng(),
+          LONDON_LAT, 
+          LONDON_LON);
+          
+    dataFile.println(distanceToLondon/1000, 6);                //print the distance to your custom location
+    dataFile.close();
 
-void updateFileName()
-{
-  int i = 0;
-  for (; i < MAX_LOG_FILES; i++)
-  {
-    memset(logFileName, 0, strlen(logFileName));
-    sprintf(logFileName, "%s%d.%s", LOG_FILE_PREFIX, i, LOG_FILE_SUFFIX);
-    if (!SD.exists(logFileName))
-    {
-      break;
-    }
-    else
-    {
-+      SerialMonitor.print(logFileName);
-      SerialMonitor.println(" exists");
     }
   }
-  SerialMonitor.print("File name: ");
-  SerialMonitor.println(logFileName);
+ }
 }
