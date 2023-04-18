@@ -24,7 +24,7 @@ unsigned long previousMillis=0; // millis() returns an unsigned long.
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(9600);
   ss.begin(GPSBaud);
 
   Serial.print(F("Initializing SD card. "));
