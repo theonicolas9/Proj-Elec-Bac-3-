@@ -1,0 +1,50 @@
+#include <TimeLib.h>
+
+const int GPSBaud = 9600;
+
+void setup()
+{
+  Serial.begin(GPSBaud);
+}
+
+void loop()
+{
+  static time_t timestamp = now();
+  static float latitude = 0.0;
+  static float longitude = 0.0;
+  static float altitude = 0.0;
+  static float speed = 0.0;
+  static float course = 0.0;
+  
+  // Calculate new location
+  latitude += (random(-1000, 1000) / 100000.0);
+  longitude += (random(-1000, 1000) / 100000.0);
+  altitude += (random(-100, 100) / 10.0);
+  speed += (random(-10, 10) / 10.0);
+  course += (random(-10, 10) / 10.0);
+  
+  // Generate NMEA sentence
+  char sentence[128];
+  sprintf(sentence, "$GPRMC,%02d%02d%02d,A,%.4f,%c,%.4f,%c,%.2f,%.2f,%02d%02d%02d,,*",
+          hour(timestamp), minute(timestamp), second(timestamp),
+          fabs(latitude), latitude >= 0 ? 'N' : 'S',
+          fabs(longitude), longitude >= 0 ? 'E' : 'W',
+          speed, course,
+          day(timestamp), month(timestamp), year(timestamp) % 100);
+  
+  // Calculate checksum
+  int checksum = 0;
+  for (int i = 1; sentence[i] != '*'; i++)
+  {
+    checksum ^= sentence[i];
+  }
+  
+  // Append checksum to sentence
+  sprintf(sentence + strlen(sentence), "%02X\r\n", checksum);
+  
+  // Print sentence to serial
+  Serial.print(sentence);
+  
+  // Update timestamp
+  timestamp += 1;
+}
