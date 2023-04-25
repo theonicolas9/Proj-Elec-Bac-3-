@@ -1,0 +1,68 @@
+import serial
+import time
+
+# Define the serial port and baud rate
+ser = serial.Serial('COM3', 9600)
+
+def generate_gps_data(distance_km, speed_kph):
+    # Calculate the time required to travel the distance at the given speed
+    time_hours = distance_km / speed_kph
+    time_seconds = int(time_hours * 3600)
+
+    # Generate a random starting point
+    lat, lon = generate_random_point()
+
+    # Generate a random path
+    path = ""
+    while distance_km > 0:
+        # Generate a random distance and direction to move
+        move_distance = min(distance_km, random.uniform(0.01, 0.1))
+        move_direction = random.uniform(0, 360)
+
+        # Calculate the new location based on the current location, move distance, and move direction
+        lat, lon = calculate_new_location(lat, lon, move_distance, move_direction)
+
+        # Calculate the current timestamp
+        timestamp = int(time.time()) + len(path)
+
+        # Format the data in NMEA format
+        lat_degrees = int(lat)
+        lat_minutes = (lat - lat_degrees) * 60
+        lat_direction = 'N' if lat > 0 else 'S'
+        lon_degrees = int(lon)
+        lon_minutes = (lon - lon_degrees) * 60
+        lon_direction = 'E' if lon > 0 else 'W'
+
+        nmea_data = f"$GPGGA,{timestamp:06d},{lat_degrees:02d}{lat_minutes:.6f},{lat_direction},{lon_degrees:03d}{lon_minutes:.6f},{lon_direction},1,04,3.3,{random.uniform(50, 150)},M,,M,,*47\r\n" \
+                    f"$GPRMC,{timestamp:06d},A,{lat_degrees:02d}{lat_minutes:.6f},{lat_direction},{lon_degrees:03d}{lon_minutes:.6f},{lon_direction},{speed_kph:.1f},,{timestamp:06d},,,A*00\r\n"
+
+        path += nmea_data
+        distance_km -= move_distance
+
+    return path
+
+def generate_random_point():
+    # Generate a random point within a certain radius of the center of Paris
+    lat_center = 48.8566
+    lon_center = 2.3522
+    radius_km = 5.0
+    u = random.uniform(0, 1)
+    v = random.uniform(0, 1)
+    w = radius_km * math.sqrt(u)
+    t = 2 * math.pi * v
+    x = w * math.cos(t)
+    y = w * math.sin(t)
+    lat = lat_center + (y / 111.2)
+    lon = lon_center + (x / (111.2 * math.cos(lat_center)))
+    return lat, lon
+
+if __name__ == '__main__':
+    # Generate GPS data
+    gps_data = generate_gps_data(5.0, 5.0)
+
+    # Send GPS data to Arduino
+    ser.write(gps_data.encode())
+    print("GPS data sent to Arduino")
+
+    # Close the serial port
+    ser.close()
