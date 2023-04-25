@@ -1,0 +1,71 @@
+#include <SoftwareSerial.h>
+
+// Define NMEA sentence templates
+const char* GPRMC_TEMPLATE = "$GPRMC,%02d%02d%02d.000,A,%06.4f,%c,%06.4f,%c,%.2f,%.2f,%02d%02d%02d,,,A*";
+const char* GPGGA_TEMPLATE = "$GPGGA,%02d%02d%02d.000,%06.4f,%c,%06.4f,%c,1,04,2.0,%.2f,M,0,M,,*";
+
+// Define initial position and time
+float lat = 37.7749;
+float lon = -122.4194;
+float alt = 0.0;
+float speed = 0.0;
+int hour = 0;
+int minute = 0;
+int second = 0;
+
+// Define function to generate random path
+void generatePath() {
+  // Randomly generate new position and time
+  float deltaLat = random(-100, 100) * 0.00001;
+  float deltaLon = random(-100, 100) * 0.00001;
+  float deltaAlt = random(-5, 5);
+  float deltaSpeed = random(-5, 5) / 10.0;
+  int deltaHour = random(0, 1);
+  int deltaMinute = random(0, 59);
+  int deltaSecond = random(0, 59);
+  
+  lat += deltaLat;
+  lon += deltaLon;
+  alt += deltaAlt;
+  speed += deltaSpeed;
+  minute += deltaMinute;
+  second += deltaSecond;
+  if (second >= 60) {
+    second -= 60;
+    minute++;
+  }
+  hour += deltaHour;
+  if (hour >= 24) {
+    hour -= 24;
+  }
+}
+
+// Define function to send NMEA sentences over serial port
+void sendNMEA(const char* sentence) {
+  Serial.print(sentence);
+  byte checksum = 0;
+  for (int i = 1; sentence[i] != '*'; i++) {
+    checksum ^= sentence[i];
+  }
+  Serial.print("*");
+  if (checksum < 16) {
+    Serial.print("0");
+  }
+  Serial.println(checksum, HEX);
+}
+
+// Define function to simulate GPS module
+void simulateGPS() {
+  // Generate new position and time
+  generatePath();
+
+  // Send GPRMC sentence
+  char gprmc[80];
+  sprintf(gprmc, GPRMC_TEMPLATE, hour, minute, second, abs(lat), (lat < 0) ? 'S' : 'N', abs(lon), (lon < 0) ? 'W' : 'E', speed, 0.0, 0);
+  sendNMEA(gprmc);
+
+  // Send GPGGA sentence
+  char gpgga[80];
+  sprintf(gpgga, GPGGA_TEMPLATE, hour, minute, second, abs(lat), (lat < 0) ? 'S' : 'N', abs(lon), (lon < 0) ? 'W' : 'E', alt);
+  sendNMEA(gpgga);
+}
