@@ -1,8 +1,31 @@
 import serial
 import time
+import math
+import random
 
 # Define the serial port and baud rate
 ser = serial.Serial('COM3', 9600)
+
+# Earth's radius in kilometers
+EARTH_RADIUS = 6371.01
+
+def calculate_new_location(lat, lon, distance_km, direction_degrees):
+    # Convert latitude and longitude to radians
+    lat_radians = math.radians(lat)
+    lon_radians = math.radians(lon)
+
+    # Convert direction from degrees to radians
+    direction_radians = math.radians(direction_degrees)
+
+    # Calculate the new latitude and longitude
+    new_lat_radians = math.asin(math.sin(lat_radians) * math.cos(distance_km / EARTH_RADIUS) + math.cos(lat_radians) * math.sin(distance_km / EARTH_RADIUS) * math.cos(direction_radians))
+    new_lon_radians = lon_radians + math.atan2(math.sin(direction_radians) * math.sin(distance_km / EARTH_RADIUS) * math.cos(lat_radians), math.cos(distance_km / EARTH_RADIUS) - math.sin(lat_radians) * math.sin(new_lat_radians))
+
+    # Convert new latitude and longitude to degrees
+    new_lat = math.degrees(new_lat_radians)
+    new_lon = math.degrees(new_lon_radians)
+
+    return new_lat, new_lon
 
 def generate_gps_data(distance_km, speed_kph):
     # Calculate the time required to travel the distance at the given speed
