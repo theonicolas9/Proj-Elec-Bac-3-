@@ -219,15 +219,16 @@ if (gps.location.isUpdated())
      if ( speed_curr != speed_last ) 
             {
               int meteo = 0; // O pour un temps sec et 1 pour un temps de pluie 
-              
+              c= speed_curr/3,6;  
                switch( meteo) {
-                  case 0 : // en temps sec 
-                 c= speed_curr/10;  // définition ou?
-                 darret = pow(c,2); // fonction pow(nombre,exposant) nous donne la valeur du nombre élevé à la puissance indiquée. 
+                  case 0 : // route sèche
+                    darret = c*2;
                     break;
-                  default: // en temps de pluie
-                 c= speed_curr/10;
-                 darret= pow(c,2)*1,5; 
+                  case 1 :  // route mouillé
+                    darret = c*3;
+                    break;
+                  default:  // route enneigée ou verglacée
+                    darret = c*2;
                     break;
                 }  
              lcd.setCursor(10,1);
@@ -290,4 +291,3 @@ if (gps.location.isUpdated())
 //     }
 //    dataFile.println(time_second);
 ////    dataFile.print(F(","));
-
