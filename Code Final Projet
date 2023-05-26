@@ -1,9 +1,9 @@
 #include <TinyGPS++.h>
 #include <SoftwareSerial.h>
-#include <SD.h>
+#include <SD.h> // Library for SD Card
 #include <LiquidCrystal_I2C.h> // Library for LCD
 
-const int chipSelect = 10;
+const int chipSelect = 10;    
 
 static const int RXPin = 4, TXPin = 5;
 static const uint32_t GPSBaud = 4800;
@@ -18,28 +18,20 @@ TinyGPSPlus gps;
 SoftwareSerial ss(RXPin, TXPin);
 
 LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C address 0x27, 16 column and 2 rows
-// For stats that happen every 5 seconds
-//unsigned long last = 0UL;
+
 
 float interval=5000; // ou mettre unsigned long interval = 5000; 
 float intervalsec=0;
-// float latitude = gps.location.lat();
-// float longitude = gps.location.lng();
-// int date_year = gps.date.year();
-// int date_month = gps.date.month();
-// int date_day = gps.date.day();
-// int time_hour = gps.time.hour();
-// int time_minute = gps.time.minute();
-// int time_second = gps.time.second();
 float speed_last=5; 
 float darret =0.0; 
 float c= 0.0; 
-String message = "a";
 unsigned long previousMillis=0; // millis() returns an unsigned long.
 float speed_curr =0;
+
+
 void setup()
 {
-  //New 
+ 
   lcd.init(); 
   lcd.backlight();       
   lcd.setCursor(0,0);
@@ -51,14 +43,13 @@ void setup()
   ss.begin(GPSBaud);
 
   Serial.print(F("Initializing SD card. "));
-  // make sure that the default chip select pin is set to
-  // output, even if you don't use it:
+  // make sure that the default chip select pin is set to output, even if you don't use it:
   pinMode(10, OUTPUT);
   
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
     Serial.println(F("Card failed."));
-    // don't do anything more:
+  
     return;
   }
   Serial.println(F("Card initialized."));
@@ -109,44 +100,32 @@ File dataFile = SD.open(filename, FILE_WRITE);
 
 void loop()
 {
-     if (ss.available() > 0)                   // Simplement changer while en if -> OK 
+    if (ss.available() > 0)                 
     gps.encode(ss.read());
        
-// // Dispatch incoming characters
-//  if (ss.available() > 0)    {                // Simplement changer while en if -> OK 
-//    message = ss.read();
-//    gps.encode(&message);
-//  }  
-  if(gps.speed.isValid())
-  {
-    speed_curr = gps.speed.kmph();
-  }
-//   latitude = gps.location.lat();
-//   longitude = gps.location.lng();
-//   date_year = gps.date.year();
-//   date_month = gps.date.month();
-//   date_day = gps.date.day();
-//   time_hour = gps.time.hour();
-//   time_minute = gps.time.minute();
-//   time_second = gps.time.second();
+    if(gps.speed.isValid())
+    {
+      speed_curr = gps.speed.kmph();
+    }
+
       
     if ( speed_curr ) {
     int val = speed_curr;
     
     switch( val ) {
       case 0 ... 29:
-      interval = 1; // Intervalle de 10 secondes pour les vitesses <= 30 km/h
+      interval = 10000; // Intervalle de 10 secondes pour les vitesses <= 30 km/h
       intervalsec= interval/1000;
-     // limit=30;
+  
         break;
       case 30 ... 49:
-      interval =  1; // Intervalle de 10 secondes pour les vitesses <= 50 km/h
+      interval =  5000; // Intervalle de 5 secondes pour les vitesses <= 50 km/h
       intervalsec= interval/1000;
-    //  limit=50;
+  
        
         break;
       default:
-      interval = 1; // Intervalle de 2secondes pour les vitesses > 50 km/h
+      interval = 2000; // Intervalle de 2secondes pour les vitesses > 50 km/h
       intervalsec= interval/1000;    
         break;
     }  
@@ -215,12 +194,11 @@ if (gps.location.isUpdated())
      dataFile.print(0);
      }
     dataFile.println(gps.time.second());
-//    dataFile.print(F(","));
     Serial.print(F("- time_second : ")); 
     Serial.println( gps.time.second() );
 
 
-//New
+
      if ( speed_curr != speed_last ) 
             {
                 int meteo = 0; // 0 pour un temps sec, 1 pour un temps de pluie et 2 pour un temps enneigé/verglacé
@@ -238,10 +216,8 @@ if (gps.location.isUpdated())
                 }
              lcd.setCursor(10,1);
              lcd.print(darret);
-             lcd.setCursor(14,1);         // Si des bugs bizzare, peu être que ça peut faire bugger 
+             lcd.setCursor(14,1);        
              lcd.print(" m");
-//             Serial.print(F("- Distance d'arrêt : ")); 
-//             Serial.println( darret );
              speed_last = speed_curr;
             }
         Serial.print(F("- Distance d'arrêt : ")); 
@@ -251,49 +227,3 @@ if (gps.location.isUpdated())
   }
  }
 }
-
-
-
-
-//
-//    Serial.println(F("Test"));    
-//    dataFile.print(latitude, 6);                //print location data
-//    dataFile.print(F(","));
-//    dataFile.print(longitude, 6);
-//    dataFile.print(F(","));
-//
-//    dataFile.print(speed_curr);                    //print speed
-//    dataFile.print(F(","));
-//
-//    if (gps.date.day()<10){  // Print date. Add a leading zero, if necessary.
-//     dataFile.print(0);
-//     }
-//    dataFile.print(date_day);
-//    dataFile.print(F("."));
-//    
-//    if (gps.date.month()<10){  // Add a zero, if necessary, as above
-//     dataFile.print(0);
-//     }
-//    dataFile.print(date_month);
-//    dataFile.print(F("."));
-//    
-//    dataFile.print(date_year);
-//    dataFile.print(F(","));
-//
-//    if (gps.time.hour()<10){            //Print GMT time. Add a zero, if necessary, as above
-//     dataFile.print(0);
-//     }
-//    dataFile.print(time_hour);
-//    dataFile.print(F(":"));
-//    
-//    if (gps.time.minute()<10){  // Add a zero, if necessary, as above
-//     dataFile.print(0);
-//     }
-//    dataFile.print(time_minute);
-//    dataFile.print(F(":"));
-//    
-//    if (gps.time.second()<10){  // Add a zero, if necessary, as above
-//     dataFile.print(0);
-//     }
-//    dataFile.println(time_second);
-////    dataFile.print(F(","));
